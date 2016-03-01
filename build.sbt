@@ -1,13 +1,24 @@
+lazy val root = project
+  .copy(id = "root")
+  .in(file("."))
+  .enablePlugins(GitVersioning)
+  .aggregate(akkaClusterControl, akkaClusterControlApp)
+
 lazy val akkaClusterControl = project
   .copy(id = "akka-cluster-control")
-  .in(file("."))
-  .enablePlugins(AutomateHeaderPlugin, GitVersioning)
+  .in(file("akka-cluster-control"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .configs(MultiJvm)
 
-name := "akka-cluster-control"
+lazy val akkaClusterControlApp = project
+  .copy(id = "akka-cluster-control-app")
+  .in(file("akka-cluster-control-app"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .dependsOn(akkaClusterControl)
 
-libraryDependencies ++= Vector(
-  Library.scalaCheck % "test"
-)
+name := "root"
 
-initialCommands := """|import de.heikoseeberger.akka.cluster.control._
-                      |""".stripMargin
+unmanagedSourceDirectories in Compile := Vector.empty
+unmanagedSourceDirectories in Test    := Vector.empty
+
+publishArtifact := false
