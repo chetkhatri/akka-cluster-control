@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Akka Cluster Control</title>
+        <style>
+            .joined {
+                fill: LightGreen;
+            }
+
+            .up {
+                fill: Green;
+            }
+
+            .left {
+                fill: Gray;
+            }
+
+            .exited {
+                fill: LightGray;
+            }
+
+            .unreachable {
+                stroke: OrangeRed;
+                stroke-width: 4px;
+            }
+        </style>
+    </head>
+    <body>
+        <script src="js/d3.min.js"></script>
+        <script>
+            var width = 640,
+                height = 480;
+            var svg = d3.select("body").append("svg")
+                .attr("width", width)
+                .attr("heigth", height);
+            var memberNodes = [];
+            var memberNodeEvents = new EventSource("member-node-events");
+
+            ["joined", "up", "left", "exited"].forEach(function (status) {
+                memberNodeEvents.addEventListener(status, function (event) {
+                    var address = event.data.substring(event.data.indexOf("@") + 1);
+                    addOrUpdateMemberNode({address: address, status: status});
+                    console.log("Member node " + address + " has/is " + status);
+                });
+            });
+            memberNodeEvents.addEventListener("removed", function (event) {
+                var address = event.data.substring(event.data.indexOf("@") + 1);
+                removeMemberNode({address: address});
+                console.log("Member node " + address + " has been removed");
+            });
+            memberNodeEvents.addEventListener("reachable", function (event) {
+                var address = event.data.substring(event.data.indexOf("@") + 1);
+                addOrUpdateMemberNode({address: address, unreachable: false});
+                console.log("Member node " + address + " is reachable");
+            });
+            memberNodeEvents.addEventListener("unreachable", function (event) {
+                var address = event.data.substring(event.data.indexOf("@") + 1);
+                addOrUpdateMemberNode({address: address, unreachable: true});
+                console.log("Member node " + address + " is unreachable");
+            });
+
+            function refresh(data) {
+                var circles = svg.selectAll("circle").data(data, function (memberNode) {
+                    return memberNode.address;
+                });
+                circles
+                    .attr("class", function (d) {
+                            return d.status;
+                    })
+                    .classed("unreachable", function (d) {
+                        return d.unreachable !== "undefined" && d.unreachable !== null && d.unreachable;
+                    });
+                circles.enter().append("circle")
+                    .attr("cx", function (d, i) {
+                        return (i + 1) * 60;
+                    })
+                    .attr("cy", 60)
+                    .attr("r", 20)
+                    .attr("class", function (d) {
+                        return d.status;
+                    })
+                    .classed("unreachable", function (d) {
+                        return d.unreachable !== "undefined" && d.unreachable !== null && d.unreachable;
+                    });
+                circles.exit().remove();
+            }
+
+            function addOrUpdateMemberNode(memberNode) {
+                var index = memberNodes.findIndex(function (x) {
+                    return x.address == memberNode.address;
+                });
+                if (index == -1) {
+                    memberNodes.push(memberNode);
+                } else {
+                    if (typeof memberNode.status !== 'undefined' && memberNode.status !== null) {
+                        memberNodes[index].status = memberNode.status
+                    }
+                    if (typeof memberNode.unreachable !== 'undefined' && memberNode.unreachable !== null) {
+                        memberNodes[index].unreachable = memberNode.unreachable
+                    }
+                }
+                refresh(memberNodes);
+            }
+
+            function removeMemberNode(memberNode) {
+                var index = memberNodes.findIndex(function (x) {
+                    return x.address == memberNode.address;
+                });
+                if (index != -1) {
+                    memberNodes.splice(index);
+                    refresh(memberNodes);
+                }
+            }
+        </script>
+    </body>
+</html>
