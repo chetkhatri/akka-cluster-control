@@ -21,6 +21,7 @@ import akka.actor.ActorSystem
 import akka.cluster.Cluster
 import akka.event.Logging
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 import scala.concurrent.Await
@@ -37,7 +38,15 @@ object ClusterControlApp {
     val log = Logging(system, this.getClass)
     val address = system.settings.config.getString("akka-cluster-control.http.address")
     val port = system.settings.config.getInt("akka-cluster-control.http.port")
-    val route = ClusterControl(Cluster(system), endpoint = Directives.rawPathPrefix(Directives.Neutral))
+
+    def route = {
+      import Directives._
+      // format: OFF
+      ClusterControl(Cluster(system), endpoint = Directives.rawPathPrefix(Directives.Neutral)) ~
+      getFromResourceDirectory("web") ~
+      redirect("index.html", StatusCodes.PermanentRedirect)
+      // format: ON
+    }
 
     Http(system)
       .bindAndHandle(route, address, port)
