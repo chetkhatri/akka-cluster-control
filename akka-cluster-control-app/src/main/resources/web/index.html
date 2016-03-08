@@ -37,80 +37,107 @@
             var memberNodes = [];
             var memberNodeEvents = new EventSource("member-node-events");
 
-            ["joined", "up", "left", "exited"].forEach(function (status) {
-                memberNodeEvents.addEventListener(status, function (event) {
-                    var address = event.data.substring(event.data.indexOf("@") + 1);
-                    addOrUpdateMemberNode({address: address, status: status});
-                    console.log("Member node " + address + " has/is " + status);
-                });
-            });
-            memberNodeEvents.addEventListener("removed", function (event) {
-                var address = event.data.substring(event.data.indexOf("@") + 1);
-                removeMemberNode({address: address});
-                console.log("Member node " + address + " has been removed");
-            });
-            memberNodeEvents.addEventListener("reachable", function (event) {
-                var address = event.data.substring(event.data.indexOf("@") + 1);
-                addOrUpdateMemberNode({address: address, unreachable: false});
-                console.log("Member node " + address + " is reachable");
-            });
-            memberNodeEvents.addEventListener("unreachable", function (event) {
-                var address = event.data.substring(event.data.indexOf("@") + 1);
-                addOrUpdateMemberNode({address: address, unreachable: true});
-                console.log("Member node " + address + " is unreachable");
+            memberNodeEvents.addEventListener("joined", function(event) {
+                var address = extractAddress(event);
+                memberNodes.push({address: address, status: "joined", unreachable: false});
+                refresh(memberNodes);
             });
 
+            memberNodeEvents.addEventListener("up", function(event) {
+                var address = extractAddress(event);
+                var memberNodeExists = memberNodes.some(function(memberNode) {
+                    return memberNode.address == address;
+                });
+                if (memberNodeExists) {
+                    updateMemberNodes(
+                        function(memberNode) {
+                            memberNode.status = "up";
+                            return memberNode;
+                        },
+                        event
+                    );
+                } else {
+                    memberNodes.push({address: address, status: "up", unreachable: false});
+                    refresh(memberNodes);
+                }
+            });
+
+            ["left", "exited"].forEach(function(status) {
+                memberNodeEvents.addEventListener(status, function(event) {
+                    updateMemberNodes(
+                        function(memberNode) {
+                            memberNode.status = status;
+                            return memberNode;
+                        },
+                        event
+                    );
+                });
+            });
+
+            memberNodeEvents.addEventListener("removed", function(event) {
+                var address = extractAddress(event);
+                memberNodes = memberNodes.filter(function(memberNode) {
+                    return memberNode.address != address;
+                });
+                refresh(memberNodes);
+            });
+
+            memberNodeEvents.addEventListener("reachable", function(event) {
+                updateMemberNodes(
+                    function (memberNode) {
+                        memberNode.unreachable = false;
+                        return memberNode;
+                    },
+                    event
+                );
+            });
+
+            memberNodeEvents.addEventListener("unreachable", function(event) {
+                updateMemberNodes(
+                    function (memberNode) {
+                        memberNode.unreachable = true;
+                        return memberNode;
+                    },
+                    event
+                );
+            });
+
+            function updateMemberNodes(updated, event) {
+                var address = extractAddress(event);
+                memberNodes = memberNodes.map(function(memberNode) {
+                    return memberNode.address == address ? updated(memberNode) : memberNode;
+                });
+                refresh(memberNodes);
+            }
+
+            function extractAddress(event) {
+                return event.data.substring(event.data.indexOf("@") + 1);
+            }
+
             function refresh(data) {
-                var circles = svg.selectAll("circle").data(data, function (memberNode) {
+                var circles = svg.selectAll("circle").data(data, function(memberNode) {
                     return memberNode.address;
                 });
                 circles
-                    .attr("class", function (d) {
-                            return d.status;
+                    .attr("class", function(d) {
+                        return d.status;
                     })
-                    .classed("unreachable", function (d) {
-                        return d.unreachable !== "undefined" && d.unreachable !== null && d.unreachable;
+                    .classed("unreachable", function(d) {
+                        return d.unreachable;
                     });
                 circles.enter().append("circle")
-                    .attr("cx", function (d, i) {
+                    .attr("cx", function(d, i) {
                         return (i + 1) * 60;
                     })
                     .attr("cy", 60)
                     .attr("r", 20)
-                    .attr("class", function (d) {
+                    .attr("class", function(d) {
                         return d.status;
                     })
-                    .classed("unreachable", function (d) {
-                        return d.unreachable !== "undefined" && d.unreachable !== null && d.unreachable;
+                    .classed("unreachable", function(d) {
+                        return d.unreachable;
                     });
                 circles.exit().remove();
-            }
-
-            function addOrUpdateMemberNode(memberNode) {
-                var index = memberNodes.findIndex(function (x) {
-                    return x.address == memberNode.address;
-                });
-                if (index == -1) {
-                    memberNodes.push(memberNode);
-                } else {
-                    if (typeof memberNode.status !== 'undefined' && memberNode.status !== null) {
-                        memberNodes[index].status = memberNode.status
-                    }
-                    if (typeof memberNode.unreachable !== 'undefined' && memberNode.unreachable !== null) {
-                        memberNodes[index].unreachable = memberNode.unreachable
-                    }
-                }
-                refresh(memberNodes);
-            }
-
-            function removeMemberNode(memberNode) {
-                var index = memberNodes.findIndex(function (x) {
-                    return x.address == memberNode.address;
-                });
-                if (index != -1) {
-                    memberNodes.splice(index);
-                    refresh(memberNodes);
-                }
             }
         </script>
     </body>
