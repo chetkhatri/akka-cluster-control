@@ -8,7 +8,7 @@ object Version {
   final val Circe        = "0.3.0"
   final val Constructr   = "0.9.1"
   final val Log4j        = "2.5"
-  final val Scala        = "2.11.7"
+  final val Scala        = "2.11.8"
   final val ScalaTest    = "2.2.6"
 }
 
