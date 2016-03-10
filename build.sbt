@@ -1,5 +1,5 @@
-lazy val root = project
-  .copy(id = "root")
+lazy val akkaClusterControlRoot = project
+  .copy(id = "akka-cluster-control-root")
   .in(file("."))
   .enablePlugins(GitVersioning)
   .aggregate(akkaClusterControl, akkaClusterControlApp)
@@ -13,10 +13,10 @@ lazy val akkaClusterControl = project
 lazy val akkaClusterControlApp = project
   .copy(id = "akka-cluster-control-app")
   .in(file("akka-cluster-control-app"))
-  .enablePlugins(AutomateHeaderPlugin)
+  .enablePlugins(AutomateHeaderPlugin, JavaAppPackaging, DockerPlugin)
   .dependsOn(akkaClusterControl)
 
-name := "root"
+name := "akka-cluster-control-root"
 
 unmanagedSourceDirectories in Compile := Vector.empty
 unmanagedSourceDirectories in Test    := Vector.empty
