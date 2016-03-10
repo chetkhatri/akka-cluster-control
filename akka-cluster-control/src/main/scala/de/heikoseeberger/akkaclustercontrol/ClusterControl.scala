@@ -65,8 +65,14 @@ object ClusterControl {
           case EncodedAddress(address) =>
             delete {
               complete {
-                cluster.leave(address)
-                StatusCodes.NoContent
+                if (cluster.state.members.exists(_.address == address)) {
+                  if (cluster.state.unreachable.exists(_.address == address))
+                    cluster.down(address)
+                  else
+                    cluster.leave(address)
+                  StatusCodes.NoContent
+                } else
+                  StatusCodes.NotFound -> s"$address is not a member node!"
               }
             }
           case unknown =>
