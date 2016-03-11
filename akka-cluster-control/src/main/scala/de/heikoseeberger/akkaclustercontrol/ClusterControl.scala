@@ -53,7 +53,6 @@ object ClusterControl {
     implicit
     ec: ExecutionContext
   ): Route = {
-    import CirceCodec._
     import CirceSupport._
     import Directives._
     import EventStreamMarshalling._
