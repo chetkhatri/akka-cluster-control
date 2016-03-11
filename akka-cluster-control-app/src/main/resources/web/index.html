@@ -30,10 +30,12 @@
         <script src="js/d3.min.js"></script>
         <script>
             var width = 640,
-                height = 480;
+                height = 320,
+                radius = 20,
+                orbit = 0.67;
             var svg = d3.select("body").append("svg")
                 .attr("width", width)
-                .attr("heigth", height);
+                .attr("height", height);
             var memberNodes = [];
             var memberNodeEvents = new EventSource("member-node-events");
 
@@ -121,26 +123,29 @@
             }
 
             function refresh(memberNodes) {
+                function addCommonAttrs(circles, i) {
+                    var offset = function (f, i) {
+                        return memberNodes.length >= 2 ? f(2 * Math.PI * i / memberNodes.length) : 0;
+                    };
+                    return circles
+                        .attr("cx", function(memberNode, i) {
+                            var x = width / 2;
+                            return x * (1 + offset(Math.sin, i) * orbit);
+                        })
+                        .attr("cy", function(memberNode, i) {
+                            var y = height / 2;
+                            return y * (1 - offset(Math.cos, i) * orbit);
+                        })
+                        .attr("class", function(memberNode) {
+                            return memberNode.status;
+                        })
+                        .classed("unreachable", function(memberNode) {
+                            return memberNode.unreachable;
+                        });
+                }
                 var circles = svg.selectAll("circle").data(memberNodes);
-                circles
-                    .attr("class", function(memberNode) {
-                        return memberNode.status;
-                    })
-                    .classed("unreachable", function(memberNode) {
-                        return memberNode.unreachable;
-                    });
-                circles.enter().append("circle")
-                    .attr("cx", function(d, i) {
-                        return (i + 1) * 60;
-                    })
-                    .attr("cy", 60)
-                    .attr("r", 20)
-                    .attr("class", function(d) {
-                        return d.status;
-                    })
-                    .classed("unreachable", function(memberNode) {
-                        return memberNode.unreachable;
-                    });
+                addCommonAttrs(circles);
+                addCommonAttrs(circles.enter().append("circle").attr("r", radius));
                 circles.exit().remove();
             }
         </script>
