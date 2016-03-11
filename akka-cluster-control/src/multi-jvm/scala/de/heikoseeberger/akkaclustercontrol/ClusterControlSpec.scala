@@ -48,7 +48,6 @@ class ClusterControlSpecMultiJvmNode3 extends ClusterControlSpec
 
 abstract class ClusterControlSpec extends MultiNodeSpec(ClusterControlConfig)
     with WordSpecLike with Matchers with BeforeAndAfterAll with RequestBuilding {
-  import CirceCodec._
   import CirceSupport._
   import ClusterControl._
   import EventStreamUnmarshalling._
@@ -134,7 +133,7 @@ abstract class ClusterControlSpec extends MultiNodeSpec(ClusterControlConfig)
 
       runOn(roles.head) {
         val events = result(
-          eventSource.takeWhile(_ != sse(2553, "removed")).runFold(Vector.empty[ServerSentEvent])(_ :+ _),
+          eventSource.take(7).runFold(Vector.empty[ServerSentEvent])(_ :+ _),
           10.seconds.dilated
         )
         events should contain inOrder (
@@ -145,8 +144,7 @@ abstract class ClusterControlSpec extends MultiNodeSpec(ClusterControlConfig)
           sse(2553, "joined"),
           sse(2553, "up"),
           sse(2553, "left"),
-          sse(2553, "exited"),
-          sse(2553, "unreachable")
+          sse(2553, "exited")
         )
       }
 
@@ -180,5 +178,17 @@ abstract class ClusterControlSpec extends MultiNodeSpec(ClusterControlConfig)
   private def ports(memberNodes: Set[MemberNode]) =
     memberNodes.withFilter(_.status == MemberStatus.up).flatMap(_.address.port)
 
-  private def sse(port: Int, kind: String) = ServerSentEvent(cluster.selfAddress.copy(port = Some(port)).toString, kind)
+  private def sse(port: Int, eventType: String) = {
+    import io.circe.generic.auto._
+    import io.circe.syntax._
+    val address = cluster.selfAddress.copy(port = Some(port))
+    val status = eventType match {
+      case "joined"  => MemberStatus.joining
+      case "up"      => MemberStatus.up
+      case "left"    => MemberStatus.leaving
+      case "exited"  => MemberStatus.exiting
+      case "removed" => MemberStatus.removed
+    }
+    ServerSentEvent(MemberNode(EncAddress(address), address, status).asJson.noSpaces, eventType)
+  }
 }

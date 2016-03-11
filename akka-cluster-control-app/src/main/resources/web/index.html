@@ -30,23 +30,28 @@
         <script src="js/d3.min.js"></script>
         <script>
             var width = 640,
-                height = 480;
-            var svg = d3.select("body").append("svg")
-                .attr("width", width)
-                .attr("heigth", height);
+                height = 320,
+                radius = 20,
+                orbit = 0.67;
+            var svg = d3.select("body").append("svg").attr("width", width).attr("height", height);
             var memberNodes = [];
             var memberNodeEvents = new EventSource("member-node-events");
 
             memberNodeEvents.addEventListener("joined", function(event) {
-                var address = extractAddress(event);
-                memberNodes.push({address: address, status: "joined", unreachable: false});
+                var memberNode = JSON.parse(event.data);
+                memberNodes.push({
+                    encAddress: memberNode.encAddress,
+                    address: memberNode.address,
+                    status: "joined",
+                    unreachable: false
+                });
                 refresh(memberNodes);
             });
 
             memberNodeEvents.addEventListener("up", function(event) {
-                var address = extractAddress(event);
-                var memberNodeExists = memberNodes.some(function(memberNode) {
-                    return memberNode.address == address;
+                var memberNode = JSON.parse(event.data);
+                var memberNodeExists = memberNodes.some(function(x) {
+                    return x.encAddress == memberNode.encAddress;
                 });
                 if (memberNodeExists) {
                     updateMemberNodes(
@@ -57,7 +62,12 @@
                         event
                     );
                 } else {
-                    memberNodes.push({address: address, status: "up", unreachable: false});
+                    memberNodes.push({
+                        encAddress: memberNode.encAddress,
+                        address: memberNode.address,
+                        status: "up",
+                        unreachable: false
+                    });
                     refresh(memberNodes);
                 }
             });
@@ -75,16 +85,16 @@
             });
 
             memberNodeEvents.addEventListener("removed", function(event) {
-                var address = extractAddress(event);
-                memberNodes = memberNodes.filter(function(memberNode) {
-                    return memberNode.address != address;
+                var memberNode = JSON.parse(event.data);
+                memberNodes = memberNodes.filter(function(x) {
+                    return x.encAddress != memberNode.encAddress;
                 });
                 refresh(memberNodes);
             });
 
             memberNodeEvents.addEventListener("reachable", function(event) {
                 updateMemberNodes(
-                    function (memberNode) {
+                    function(memberNode) {
                         memberNode.unreachable = false;
                         return memberNode;
                     },
@@ -94,7 +104,7 @@
 
             memberNodeEvents.addEventListener("unreachable", function(event) {
                 updateMemberNodes(
-                    function (memberNode) {
+                    function(memberNode) {
                         memberNode.unreachable = true;
                         return memberNode;
                     },
@@ -103,40 +113,41 @@
             });
 
             function updateMemberNodes(updated, event) {
-                var address = extractAddress(event);
-                memberNodes = memberNodes.map(function(memberNode) {
-                    return memberNode.address == address ? updated(memberNode) : memberNode;
+                var memberNode = JSON.parse(event.data);
+                memberNodes = memberNodes.map(function(x) {
+                    return x.encAddress == memberNode.encAddress ? updated(x) : x;
                 });
                 refresh(memberNodes);
             }
 
-            function extractAddress(event) {
-                return event.data.substring(event.data.indexOf("@") + 1);
-            }
-
-            function refresh(data) {
-                var circles = svg.selectAll("circle").data(data, function(memberNode) {
-                    return memberNode.address;
-                });
-                circles
-                    .attr("class", function(d) {
-                        return d.status;
-                    })
-                    .classed("unreachable", function(d) {
-                        return d.unreachable;
-                    });
-                circles.enter().append("circle")
-                    .attr("cx", function(d, i) {
-                        return (i + 1) * 60;
-                    })
-                    .attr("cy", 60)
-                    .attr("r", 20)
-                    .attr("class", function(d) {
-                        return d.status;
-                    })
-                    .classed("unreachable", function(d) {
-                        return d.unreachable;
-                    });
+            function refresh(memberNodes) {
+                function addCommonAttrs(circles, i) {
+                    var offset = function (f, i) {
+                        return memberNodes.length >= 2 ? f(2 * Math.PI * i / memberNodes.length) : 0;
+                    };
+                    return circles
+                        .attr("class", function(memberNode) {
+                            return memberNode.status;
+                        })
+                        .classed("unreachable", function(memberNode) {
+                            return memberNode.unreachable;
+                        })
+                        .transition()
+                        .duration(500)
+                        .attr("cx", function(memberNode, i) {
+                            var x = width / 2;
+                            return x * (1 + offset(Math.sin, i) * orbit);
+                        })
+                        .attr("cy", function(memberNode, i) {
+                            var y = height / 2;
+                            return y * (1 - offset(Math.cos, i) * orbit);
+                        });
+                }
+                var circles = svg.selectAll("circle").data(memberNodes);
+                addCommonAttrs(circles);
+                addCommonAttrs(circles
+                    .enter().append("circle").attr("r", radius).attr("cx", width / 2).attr("cy", height / 2)
+                );
                 circles.exit().remove();
             }
         </script>

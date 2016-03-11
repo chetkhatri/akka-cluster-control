@@ -33,14 +33,15 @@ import scala.concurrent.duration.{ DurationInt, FiniteDuration }
 object ClusterControl {
 
   object MemberNode {
-    def fromMember(member: Member): MemberNode = MemberNode(member.address, member.status)
+    def fromMember(member: Member): MemberNode = MemberNode(EncAddress(member.address), member.address, member.status)
   }
-  case class MemberNode(address: Address, status: MemberStatus)
+  case class MemberNode(encAddress: EncAddress, address: Address, status: MemberStatus)
 
-  object EncodedAddress {
-    def unapply(s: String): Option[Address] = AddressFromURIString.unapply(
-      new String(Base64.getUrlDecoder.decode(s), UTF_8)
-    )
+  type EncAddress = String
+  object EncAddress {
+    def apply(address: Address): EncAddress = Base64.getUrlEncoder.encodeToString(address.toString.getBytes(UTF_8))
+    def unapply(encAddress: EncAddress): Option[Address] =
+      AddressFromURIString.unapply(new String(Base64.getUrlDecoder.decode(encAddress), UTF_8))
   }
 
   def apply(
@@ -52,7 +53,6 @@ object ClusterControl {
     implicit
     ec: ExecutionContext
   ): Route = {
-    import CirceCodec._
     import CirceSupport._
     import Directives._
     import EventStreamMarshalling._
@@ -62,11 +62,17 @@ object ClusterControl {
     endpoint {
       pathPrefix("member-nodes") {
         path(Segment) {
-          case EncodedAddress(address) =>
+          case EncAddress(address) =>
             delete {
               complete {
-                cluster.leave(address)
-                StatusCodes.NoContent
+                if (cluster.state.members.exists(_.address == address)) {
+                  if (cluster.state.unreachable.exists(_.address == address))
+                    cluster.down(address)
+                  else
+                    cluster.leave(address)
+                  StatusCodes.NoContent
+                } else
+                  StatusCodes.NotFound -> s"$address is not a member node!"
               }
             }
           case unknown =>
@@ -94,16 +100,21 @@ object ClusterControl {
     // format: ON
   }
 
-  private def toServerSentEvent(event: ClusterDomainEvent) = event match {
-    case MemberJoined(member)      => ServerSentEvent(member.address.toString, "joined")
-    case MemberUp(member)          => ServerSentEvent(member.address.toString, "up")
-    case MemberLeft(member)        => ServerSentEvent(member.address.toString, "left")
-    case MemberExited(member)      => ServerSentEvent(member.address.toString, "exited")
-    case MemberRemoved(member, _)  => ServerSentEvent(member.address.toString, "removed")
-
-    case ReachableMember(member)   => ServerSentEvent(member.address.toString, "reachable")
-    case UnreachableMember(member) => ServerSentEvent(member.address.toString, "unreachable")
-
-    case _                         => throw new IllegalStateException("Impossible, because only subscribed to MemberEvents and ReachabilityEvents!")
+  private def toServerSentEvent(event: ClusterDomainEvent) = {
+    def sse(member: Member, eventType: String) = {
+      import io.circe.generic.auto._
+      import io.circe.syntax._
+      ServerSentEvent(MemberNode.fromMember(member).asJson.noSpaces, eventType)
+    }
+    event match {
+      case MemberJoined(member)      => sse(member, "joined")
+      case MemberUp(member)          => sse(member, "up")
+      case MemberLeft(member)        => sse(member, "left")
+      case MemberExited(member)      => sse(member, "exited")
+      case MemberRemoved(member, _)  => sse(member, "removed")
+      case ReachableMember(member)   => sse(member, "reachable")
+      case UnreachableMember(member) => sse(member, "unreachable")
+      case _                         => throw new IllegalStateException("Impossible, because only subscribed to MemberEvents and ReachabilityEvents!")
+    }
   }
 }
