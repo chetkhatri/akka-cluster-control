@@ -33,9 +33,7 @@
                 height = 320,
                 radius = 20,
                 orbit = 0.67;
-            var svg = d3.select("body").append("svg")
-                .attr("width", width)
-                .attr("height", height);
+            var svg = d3.select("body").append("svg").attr("width", width).attr("height", height);
             var memberNodes = [];
             var memberNodeEvents = new EventSource("member-node-events");
 
@@ -128,6 +126,14 @@
                         return memberNodes.length >= 2 ? f(2 * Math.PI * i / memberNodes.length) : 0;
                     };
                     return circles
+                        .attr("class", function(memberNode) {
+                            return memberNode.status;
+                        })
+                        .classed("unreachable", function(memberNode) {
+                            return memberNode.unreachable;
+                        })
+                        .transition()
+                        .duration(500)
                         .attr("cx", function(memberNode, i) {
                             var x = width / 2;
                             return x * (1 + offset(Math.sin, i) * orbit);
@@ -135,17 +141,13 @@
                         .attr("cy", function(memberNode, i) {
                             var y = height / 2;
                             return y * (1 - offset(Math.cos, i) * orbit);
-                        })
-                        .attr("class", function(memberNode) {
-                            return memberNode.status;
-                        })
-                        .classed("unreachable", function(memberNode) {
-                            return memberNode.unreachable;
                         });
                 }
                 var circles = svg.selectAll("circle").data(memberNodes);
                 addCommonAttrs(circles);
-                addCommonAttrs(circles.enter().append("circle").attr("r", radius));
+                addCommonAttrs(circles
+                    .enter().append("circle").attr("r", radius).attr("cx", width / 2).attr("cy", height / 2)
+                );
                 circles.exit().remove();
             }
         </script>
