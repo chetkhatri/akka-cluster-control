@@ -3,6 +3,7 @@ name := "akka-cluster-control-app"
 libraryDependencies ++= Vector(
   Library.akkaLog4j,
   Library.constructrAkka,
+  Library.constructrCoordinationEtcd,
   Library.log4jCore
 )
 
