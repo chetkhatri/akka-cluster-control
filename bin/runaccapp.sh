@@ -8,7 +8,7 @@ tag=latest
 if [ -n "$2" ]; then
     tag="$2"
 fi
-docker_host=192.168.99.100
+host=192.168.99.100
 
 docker run \
     -d \
@@ -16,6 +16,6 @@ docker run \
     -p 255${n}:2552 \
     --name accapp${n} \
     hseeberger/akka-cluster-control-app:${tag} \
-    -Dakka.remote.netty.tcp.hostname=${docker_host} \
+    -Dakka.remote.netty.tcp.hostname=${host} \
     -Dakka.remote.netty.tcp.port=255${n} \
-    -Dconstructr.akka.coordination.host=${docker_host}
+    -Dconstructr.coordination.host=${host}
