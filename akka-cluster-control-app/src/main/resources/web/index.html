@@ -29,10 +29,10 @@
     <body>
         <script src="js/d3.min.js"></script>
         <script>
-            var width = 640,
-                height = 320,
-                radius = 20,
-                orbit = 0.67;
+            var width = 640;
+            var height = 320;
+            var radius = 20;
+            var orbit = 0.67;
             var svg = d3.select("body").append("svg").attr("width", width).attr("height", height);
             var memberNodes = [];
             var memberNodeEvents = new EventSource("member-node-events");
@@ -121,7 +121,7 @@
             }
 
             function refresh(memberNodes) {
-                function addCommonAttrs(circles, i) {
+                function addDynAttrs(circles, i) {
                     var offset = function (f, i) {
                         return memberNodes.length >= 2 ? f(2 * Math.PI * i / memberNodes.length) : 0;
                     };
@@ -131,6 +131,9 @@
                         })
                         .classed("unreachable", function(memberNode) {
                             return memberNode.unreachable;
+                        })
+                        .on("click", function(memberNode) {
+                            d3.xhr("/member-nodes/" + memberNode.encAddress).send("delete");
                         })
                         .transition()
                         .duration(500)
@@ -144,10 +147,12 @@
                         });
                 }
                 var circles = svg.selectAll("circle").data(memberNodes);
-                addCommonAttrs(circles);
-                addCommonAttrs(circles
-                    .enter().append("circle").attr("r", radius).attr("cx", width / 2).attr("cy", height / 2)
-                );
+                addDynAttrs(circles);
+                var enterCircles = circles.enter().append("circle").attr("r", radius).attr("cx", width / 2).attr("cy", height / 2);
+                addDynAttrs(enterCircles);
+                enterCircles.append("title").text(function(memberNode) {
+                    return memberNode.address.host + ":" + memberNode.address.port;
+                });
                 circles.exit().remove();
             }
         </script>
