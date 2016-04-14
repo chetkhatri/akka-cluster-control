@@ -10,9 +10,9 @@ libraryDependencies ++= Vector(
 initialCommands := """|import de.heikoseeberger.akkaclustercontrol.app._
                       |""".stripMargin
 
-version.in(Docker)    := "latest"
-maintainer.in(Docker) := "Heiko Seeberger"
 daemonUser.in(Docker) := "root"
+maintainer.in(Docker) := "Heiko Seeberger"
+version.in(Docker)    := "latest"
 dockerBaseImage       := "java:8"
-dockerRepository      := Some("hseeberger")
 dockerExposedPorts    := Vector(2552, 8000)
+dockerRepository      := Some("hseeberger")
