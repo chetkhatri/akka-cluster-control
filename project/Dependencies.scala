@@ -2,11 +2,11 @@ import sbt._
 
 object Version {
   final val Akka         = "2.4.4"
-  final val AkkaHttpJson = "1.5.4"
+  final val AkkaHttpJson = "1.6.0"
   final val AkkaLog4j    = "1.1.3"
-  final val AkkaSse      = "1.7.2"
-  final val Circe        = "0.4.0"
-  final val Constructr   = "0.12.0"
+  final val AkkaSse      = "1.8.0"
+  final val Circe        = "0.4.1"
+  final val Constructr   = "0.13.2"
   final val Log4j        = "2.5"
   final val Scala        = "2.11.8"
   final val ScalaTest    = "2.2.6"

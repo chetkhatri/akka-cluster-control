@@ -92,7 +92,7 @@ object ClusterControl {
             Source.actorRef[ClusterDomainEvent](eventBufferSize, OverflowStrategy.dropHead)
               .map(toServerSentEvent)
               .mapMaterializedValue(cluster.subscribe(_, InitialStateAsEvents, classOf[MemberEvent], classOf[ReachabilityEvent]))
-              .keepAlive(keepAliveInterval, () => ServerSentEvent.heartbeat)
+              .keepAlive(keepAliveInterval, () => ServerSentEvent.Heartbeat)
           }
         }
       }
