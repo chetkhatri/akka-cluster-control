@@ -15,6 +15,7 @@ object Build extends AutoPlugin {
   override def projectSettings = Vector(
     // Core settings
     organization := "de.heikoseeberger",
+    version := version.in(ThisBuild).value, // to avoid sbt-native-packager overwriting version from sbt-git
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
     scalaVersion := Version.Scala,
     crossScalaVersions := Vector(scalaVersion.value),
